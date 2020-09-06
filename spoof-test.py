@@ -9,13 +9,17 @@ listenPort = 25565
 maxPlayers = 10000
 players = 9001
 
-debug = True
+debug = False
 
 serverVersion = "1.17.2"
-serverProtocol = 751
+serverProtocol = 736
 
 
 ##
+
+def dprint(*args, **kwargs):
+    if debug:
+        print(*args, **kwargs)
 
 def answerPingReq(clientSocket):
     req = clientSocket.recv(1024)
@@ -27,22 +31,39 @@ def answerPingReq(clientSocket):
 
 def mountHeader(message, const):
     message = message.encode()
+    dprint("===")
+    dprint(message)
     mesLen = len(message) + const
     byteNum = math.ceil(math.log(mesLen, 255))
+    dprint(mesLen, "|", byteNum)
     message = (mesLen).to_bytes(byteNum, byteorder="little") + message
+    dprint(message)
 
     message = bytes([0]) + message
+    dprint(message)
     mesLen = len(message) + const
     byteNum = math.ceil(math.log(mesLen, 255))
+    dprint(mesLen, "|", byteNum)
     message = (mesLen).to_bytes(byteNum, byteorder="little") + message
+    dprint(message)
     return message
 
 
 def buildInfo(message):
+    global add
+    # Example response:
+    # {
+    # "description":{"extra":[
+    #   {"bold":false,"italic":false,"underlined":false,"strikethrough":false,"obfuscated":false,"color":"blue","text":"BINGO"},
+    #   {"italic":false,"color":"white","text":"Pregenerating worlds"},
+    #   {"italic":false,"color":"dark_red","text":"\nUnable to join"}
+    #   ],"text:""},
+    # "players:{"max":0,"online":0},"version":{"name":"Paper 1.16.1","protocol":736}
+    # }
     messageAdapted = message.replace("\n", "&r\\n").replace("&", "\xa7")
-    #    "\"players\":{\"max\":20,\"online\":0},"
     messageJSON = ("{"
                    "\"description\":{\"text\":\"" + messageAdapted + "\"},"
+    # "\"players\":{\"max\":0,\"online\":0,\"sample\":[]},"                                                                 
                                                                      "\"version\":{\"name\":\"" + serverVersion + "\",\"protocol\":" + str(
         serverProtocol) + "},"
                           "\"favicon\":\"" + serverIcon + "\""
@@ -62,7 +83,7 @@ def buildJoinMsg(message):
 def handleClientSocket(clientSocket, clientAddress):
     print("Received a client socket thingy from " + clientAddress[0])
     buffer = clientSocket.recv(1024)
-    print(buffer)
+    dprint(buffer)
     if buffer[-1] == 0 or buffer[-1] == 1:
         print("Server status query")
         message = buildInfo("                   &fserver status:\n                   &b&lHIBERNATING")
