@@ -54,7 +54,7 @@ def read_string(sock: socket.socket) -> Tuple[str, int]:
     length, num_read = read_var_int(sock)
     read = sock.recv(length)
     result = read.decode("utf-8")
-    return result, num_read
+    return result, num_read + length
 
 
 def read_unsigned_short(sock: socket.socket) -> Tuple[int, int]:
@@ -63,7 +63,30 @@ def read_unsigned_short(sock: socket.socket) -> Tuple[int, int]:
     @param sock:
     @return:
     """
-    return ord(sock.recv(1)) * (2 ** 8) + ord(sock.recv(1)), 2
+    read = sock.recv(2)
+    value = int.from_bytes(read, byteorder='big', signed=True)
+    return value, 2
+
+
+def read_long(sock: socket.socket) -> Tuple[int, int]:
+    """
+    Read a long from a socket stream
+    @param sock:
+    @return:
+    """
+    read = sock.recv(8)
+    value = int.from_bytes(read, byteorder='big', signed=True)
+    return value, 8
+
+
+def encode_long(value: int) -> bytearray:
+    """
+    Encode a Python int as an MC Long type
+    @param value:
+    @return:
+    """
+    value_enc = value.to_bytes(8, byteorder='big')
+    return bytearray(value_enc)
 
 
 def encode_var_int(value: int) -> bytearray:
@@ -99,6 +122,7 @@ def encode_string(text: str) -> bytearray:
 def encode_packet(packet_id: int, contents: bytearray) -> bytearray:
     """
     Encode a packet so it can be sent to a client
+
     @param packet_id:
     @param contents:
     @return:
@@ -150,15 +174,29 @@ def handle_client_socket(client_socket: socket.socket, client_address: Tuple[str
         print(f"Server port: {server_port}")
         next_state = read_var_int(client_socket)
         print(f"Next state: {next_state}")
-        leftover_int_1 = read_var_int(client_socket)
+        print("=====")
+
+        # Request packet should follow (length 1 packet id 0 no other info)
+        length = read_var_int(client_socket)
+        print(f"Length: {length}")
+        packet_id = read_var_int(client_socket)
+        print(f"Packet ID: {packet_id}")
+        print("=====")
 
         # Reply with the server status
         send_server_status(client_socket, client_address)
 
-        # Ping usually follows (length 1 packet id 0 no other info)
-        print(f"Leftover int 1: {leftover_int_1}")
-        leftover_int_2 = read_var_int(client_socket)
-        print(f"Leftover int 2: {leftover_int_2}")
+        # Expect a ping request
+        length = read_var_int(client_socket)
+        print(f"Length: {length}")
+        packet_id = read_var_int(client_socket)
+        print(f"Packet ID: {packet_id}")
+        payload = read_long(client_socket)
+        print(f"payload: {payload}")
+        print("=====")
+
+        # Reply with a pong
+        send_pong(client_socket, payload[0])
 
     else:
         # Unknown packet
@@ -179,6 +217,16 @@ def send_server_status(client_socket: socket.socket, client_address: Tuple[str, 
     message = '{"version":{"name":"1.20.2","protocol":751},"description":{"text":"Hello world"}}'
     message_enc = encode_string(message)
     send_packet(0, message_enc, client_socket)
+
+
+def send_pong(client_socket: socket.socket, payload: int) -> None:
+    """
+    Send a pong packet
+    @param client_socket:
+    @return:
+    """
+    payload_enc = encode_long(payload)
+    send_packet(1, payload_enc, client_socket)
 
 
 def main():
