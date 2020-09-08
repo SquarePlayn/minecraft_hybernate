@@ -204,8 +204,7 @@ def handle_client_socket(client_socket: socket.socket, client_address: Tuple[str
         print(f"First int: ", first_int)
 
     # Close the connection
-    client_socket.shutdown(True)
-    client_socket.close()
+    close_connection(client_socket)
 
 
 def send_server_status(client_socket: socket.socket, client_address: Tuple[str, int]) -> None:
@@ -214,7 +213,13 @@ def send_server_status(client_socket: socket.socket, client_address: Tuple[str, 
     @param client_socket:
     @param client_address:
     """
-    message = '{"version":{"name":"1.20.2","protocol":751},"description":{"text":"Hello world"}}'
+    message = '{' \
+              '"version":{"name":"1.16.2","protocol":751},' \
+              '"players":{"max":20,"online":1,"sample":[' \
+              '{"name":"notch","id": "00000000-0000-0000-0000-000000000000"}' \
+              ']},' \
+              '"description":{"text":"Hello world"}' \
+              '}'
     message_enc = encode_string(message)
     send_packet(0, message_enc, client_socket)
 
@@ -227,6 +232,16 @@ def send_pong(client_socket: socket.socket, payload: int) -> None:
     """
     payload_enc = encode_long(payload)
     send_packet(1, payload_enc, client_socket)
+
+
+def close_connection(client_socket: socket.socket) -> None:
+    """
+    Close the connection with a client
+    @param client_socket:
+    @return:
+    """
+    client_socket.shutdown(1)
+    client_socket.close()
 
 
 def main():
