@@ -2,6 +2,7 @@ import socket
 from typing import Tuple
 
 # START Settings
+from ec2tests import start_stop_mc
 
 DEBUG = True
 LISTEN_HOST = "0.0.0.0"
@@ -176,27 +177,48 @@ def handle_client_socket(client_socket: socket.socket, client_address: Tuple[str
         print(f"Next state: {next_state}")
         print("=====")
 
-        # Request packet should follow (length 1 packet id 0 no other info)
-        length = read_var_int(client_socket)
-        print(f"Length: {length}")
-        packet_id = read_var_int(client_socket)
-        print(f"Packet ID: {packet_id}")
-        print("=====")
+        if next_state[0] == 1:
+            # Status check
+            print("Identified as status check")
 
-        # Reply with the server status
-        send_server_status(client_socket, client_address)
+            # Request packet should follow (length 1 packet id 0 no other info)
+            length = read_var_int(client_socket)
+            print(f"Length: {length}")
+            packet_id = read_var_int(client_socket)
+            print(f"Packet ID: {packet_id}")
+            print("=====")
 
-        # Expect a ping request
-        length = read_var_int(client_socket)
-        print(f"Length: {length}")
-        packet_id = read_var_int(client_socket)
-        print(f"Packet ID: {packet_id}")
-        payload = read_long(client_socket)
-        print(f"payload: {payload}")
-        print("=====")
+            # Reply with the server status
+            send_server_status(client_socket, client_address)
 
-        # Reply with a pong
-        send_pong(client_socket, payload[0])
+            # Expect a ping request
+            length = read_var_int(client_socket)
+            print(f"Length: {length}")
+            packet_id = read_var_int(client_socket)
+            print(f"Packet ID: {packet_id}")
+            payload = read_long(client_socket)
+            print(f"payload: {payload}")
+            print("=====")
+
+            # Reply with a pong
+            send_pong(client_socket, payload[0])
+
+        elif next_state[0] == 2:
+            # Login / server join
+            print("Identified as server join")
+            length = read_var_int(client_socket)
+            print(f"Length: {length}")
+            packet_id = read_var_int(client_socket)
+            print(f"Packet ID: {packet_id}")
+            username = read_string(client_socket)
+            print(f"Username: {username}")
+
+            # Respond with just disconnect message
+            message = "{\"text\":\"Server starting\"}"
+            send_packet(0, encode_string(message), client_socket)
+
+            # Start the server
+            start_stop_mc()
 
     else:
         # Unknown packet
