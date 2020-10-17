@@ -2,6 +2,7 @@ import math
 import socket
 
 ## Settings
+from ec2tests import start_stop_mc
 
 listenHost = "0.0.0.0"
 listenPort = 25565
@@ -95,6 +96,7 @@ def handleClientSocket(clientSocket, clientAddress):
         print("User: " + playerName + ". From: " + clientAddress[0])
         message = buildJoinMsg("This server is not actually on!")
         clientSocket.sendall(message)
+        start_stop_mc()
     else:
         print("Unknown end buffer: " + str(buffer[-1]))
 
